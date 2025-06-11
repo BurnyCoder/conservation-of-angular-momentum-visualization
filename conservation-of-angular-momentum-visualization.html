@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angular Momentum Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent scrollbars from flashing during resize */
+        }
+        .value-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .value-card:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        canvas {
+            background: radial-gradient(circle, #1a202c, #111827);
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        .katex { font-size: 1.1em !important; }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css" xintegrity="sha384-Xi8rHCmBmhbuyyhbI88391ZKP2dmfnOl4rT9ZfRI7mLTdk1wblIUnrIq35nqwEvC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js" xintegrity="sha384-X/XCfMm41VSsqRNChLActiPCA5b8cVdaKMOusrPQNV6N3iKVMA5DCEfx2rxUWxNc" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js" xintegrity="sha384-+XBljXPPiv+OzfbB3cVmLHf4hdUFHlWNZN5spNQ7rmHTXpd7WvJum6fIACpNNfIR" crossorigin="anonymous"></script>
+
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+        
+        <!-- Left Panel: Simulation Canvas -->
+        <div class="flex-grow flex flex-col items-center justify-center lg:w-2/3">
+            <h1 class="text-3xl font-bold mb-4 text-center text-cyan-400">Rotational Motion Simulation</h1>
+            <div class="w-full aspect-square rounded-xl shadow-2xl overflow-hidden border-2 border-gray-700">
+                <canvas id="simulationCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Panel: Controls and Data -->
+        <div class="lg:w-1/3 flex flex-col gap-6">
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">Live Values</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                    <!-- Angular Momentum (l) -->
+                    <div class="value-card p-4 rounded-lg">
+                        <div class="text-sm font-medium text-cyan-300">Angular Momentum (l)</div>
+                        <div id="l_value" class="text-2xl font-bold text-white">-</div>
+                    </div>
+                    <!-- Lagrangian (L) -->
+                    <div class="value-card p-4 rounded-lg">
+                        <div class="text-sm font-medium text-purple-300">Lagrangian (L)</div>
+                        <div id="lagrangian_value" class="text-2xl font-bold text-white">-</div>
+                    </div>
+                    <!-- Position (x, y) -->
+                    <div class="value-card p-4 rounded-lg">
+                        <div class="text-sm font-medium text-green-300">Position (x, y)</div>
+                        <div class="flex gap-4">
+                           <span class="text-xl font-bold text-white">x: <span id="x_value">-</span></span>
+                           <span class="text-xl font-bold text-white">y: <span id="y_value">-</span></span>
+                        </div>
+                    </div>
+                    <!-- Momentum (p_x, p_y) -->
+                     <div class="value-card p-4 rounded-lg">
+                        <div class="text-sm font-medium text-amber-300">Momentum (p_x, p_y)</div>
+                         <div class="flex gap-4">
+                           <span class="text-xl font-bold text-white">p_x: <span id="px_value">-</span></span>
+                           <span class="text-xl font-bold text-white">p_y: <span id="py_value">-</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">Equations</h2>
+                 <div class="text-gray-300 space-y-3">
+                    <p><strong>Position:</strong></p>
+                    <div class="pl-4">`x = r \cos(\theta)`</div>
+                    <div class="pl-4">`y = r \sin(\theta)`</div>
+                    <p><strong>Momentum:</strong></p>
+                    <div class="pl-4">`p_x = -m\omega y`</div>
+                    <div class="pl-4">`p_y = m\omega x`</div>
+                    <p><strong>Lagrangian (L = T - V):</strong></p>
+                    <div class="pl-4">`L = \frac{1}{2}m(\dot{x}^2 + \dot{y}^2) - V(r)`</div>
+                    <p><strong>Angular Momentum:</strong></p>
+                    <div class="pl-4">`l = y p_x - x p_y`</div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">Controls</h2>
+                <div class="flex flex-col gap-4">
+                   <div class="flex items-center justify-between">
+                       <label for="speedRange" class="font-medium">Speed</label>
+                       <input type="range" id="speedRange" min="0.1" max="5" step="0.1" value="1" class="w-2/3">
+                   </div>
+                    <div class="flex gap-4">
+                        <button id="startStopBtn" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
+                            Start
+                        </button>
+                        <button id="resetBtn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+             <div class="bg-gray-800 p-4 rounded-xl shadow-lg text-center text-gray-400 text-sm">
+                <p>Drag on the canvas to rotate the view.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const canvas = document.getElementById('simulationCanvas');
+            const ctx = canvas.getContext('2d');
+            const l_val = document.getElementById('l_value');
+            const lagrangian_val = document.getElementById('lagrangian_value');
+            const x_val = document.getElementById('x_value');
+            const y_val = document.getElementById('y_value');
+            const px_val = document.getElementById('px_value');
+            const py_val = document.getElementById('py_value');
+            const startStopBtn = document.getElementById('startStopBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const speedRange = document.getElementById('speedRange');
+
+            // --- Simulation State ---
+            let animationFrameId;
+            let isRunning = false;
+            let particle = {};
+            let camera = { pitch: 0.3, yaw: 0.5 }; // 3D camera angles
+
+            // --- Simulation Parameters ---
+            const params = {
+                mass: 1.0,
+                radius: 150,
+                angle: 0,
+                angularVelocity: 0.01
+            };
+            
+            // --- Camera Controls ---
+            let isDragging = false;
+            let lastMouseX, lastMouseY;
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                canvas.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const dx = e.clientX - lastMouseX;
+                    const dy = e.clientY - lastMouseY;
+                    camera.yaw += dx * 0.005;
+                    camera.pitch -= dy * 0.005;
+                    camera.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, camera.pitch));
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    if (!isRunning) draw(); 
+                }
+            });
+
+            // --- Core Functions ---
+            function setup() {
+                const container = canvas.parentElement;
+                const size = Math.min(container.clientWidth, container.clientHeight);
+                canvas.width = size;
+                canvas.height = size;
+
+                params.angle = 0;
+                params.angularVelocity = 0.01 * parseFloat(speedRange.value);
+                updateParticleState();
+                updateUI();
+                draw();
+            }
+
+            function updateParticleState() {
+                // Update position
+                particle.x = params.radius * Math.cos(params.angle);
+                particle.y = params.radius * Math.sin(params.angle);
+
+                // Calculate momentum
+                particle.px = -params.mass * params.angularVelocity * particle.y;
+                particle.py = params.mass * params.angularVelocity * particle.x;
+
+                // Calculate angular momentum
+                particle.l = particle.y * particle.px - particle.x * particle.py;
+
+                // Calculate Lagrangian (L = T - V). Assuming V=0, L=T (Kinetic Energy)
+                // T = 0.5 * m * v^2 = (px^2 + py^2) / (2*m)
+                const kineticEnergy = (particle.px**2 + particle.py**2) / (2 * params.mass);
+                particle.lagrangian = kineticEnergy; 
+            }
+
+            function updateUI() {
+                l_val.textContent = particle.l.toFixed(2);
+                lagrangian_val.textContent = particle.lagrangian.toFixed(2);
+                x_val.textContent = particle.x.toFixed(2);
+                y_val.textContent = particle.y.toFixed(2);
+                px_val.textContent = particle.px.toFixed(2);
+                py_val.textContent = particle.py.toFixed(2);
+            }
+            
+            function project(x, y, z) {
+                const rotY_x = x * Math.cos(camera.yaw) - z * Math.sin(camera.yaw);
+                const rotY_z = x * Math.sin(camera.yaw) + z * Math.cos(camera.yaw);
+                const rotX_y = y * Math.cos(camera.pitch) - rotY_z * Math.sin(camera.pitch);
+                return { x: rotY_x, y: rotX_y };
+            }
+
+            function draw() {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = 1;
+                const gridSize = 50;
+                for (let i = -5; i <= 5; i++) {
+                    let p1 = project(i * gridSize, 0, -5 * gridSize);
+                    let p2 = project(i * gridSize, 0, 5 * gridSize);
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + p1.x, centerY + p1.y);
+                    ctx.lineTo(centerX + p2.x, centerY + p2.y);
+                    ctx.stroke();
+
+                    p1 = project(-5 * gridSize, 0, i * gridSize);
+                    p2 = project(5 * gridSize, 0, i * gridSize);
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + p1.x, centerY + p1.y);
+                    ctx.lineTo(centerX + p2.x, centerY + p2.y);
+                    ctx.stroke();
+                }
+
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i <= 2 * Math.PI; i += 0.05) {
+                    const x = params.radius * Math.cos(i);
+                    const z = params.radius * Math.sin(i);
+                    const p = project(x, z, 0); 
+                    if (i === 0) {
+                        ctx.moveTo(centerX + p.x, centerY + p.y);
+                    } else {
+                        ctx.lineTo(centerX + p.x, centerY + p.y);
+                    }
+                }
+                ctx.stroke();
+                
+                const p_particle = project(particle.x, particle.y, 0);
+                
+                const p_shadow = project(particle.x, 0, 0); 
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.beginPath();
+                ctx.arc(centerX + p_shadow.x, centerY + p_shadow.y, 8, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(centerX + p_shadow.x, centerY + p_shadow.y);
+                ctx.lineTo(centerX + p_particle.x, centerY + p_particle.y);
+                ctx.stroke();
+
+                ctx.fillStyle = '#06b6d4';
+                ctx.strokeStyle = '#67e8f9';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(centerX + p_particle.x, centerY + p_particle.y, 10, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            function loop() {
+                if (!isRunning) return;
+                params.angle += params.angularVelocity;
+                updateParticleState();
+                updateUI();
+                draw();
+                animationFrameId = requestAnimationFrame(loop);
+            }
+
+            // --- Event Listeners ---
+            startStopBtn.addEventListener('click', () => {
+                isRunning = !isRunning;
+                if (isRunning) {
+                    startStopBtn.textContent = 'Stop';
+                    startStopBtn.classList.remove('bg-cyan-500', 'hover:bg-cyan-600');
+                    startStopBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                    loop();
+                } else {
+                    startStopBtn.textContent = 'Start';
+                    startStopBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                    startStopBtn.classList.add('bg-cyan-500', 'hover:bg-cyan-600');
+                    cancelAnimationFrame(animationFrameId);
+                }
+            });
+
+            resetBtn.addEventListener('click', () => {
+                isRunning = false;
+                cancelAnimationFrame(animationFrameId);
+                startStopBtn.textContent = 'Start';
+                startStopBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                startStopBtn.classList.add('bg-cyan-500', 'hover:bg-cyan-600');
+                camera.pitch = 0.3;
+                camera.yaw = 0.5;
+                setup();
+            });
+
+            speedRange.addEventListener('input', (e) => {
+                params.angularVelocity = 0.01 * parseFloat(e.target.value);
+            });
+            
+            // --- Initialization ---
+            window.addEventListener('resize', setup);
+            setup();
+            
+            // Render math equations after the DOM is fully loaded.
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "`", right: "`", display: false}
+                ]
+            });
+        });
+    </script>
+
+</body>
+</html>
